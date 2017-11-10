@@ -49,7 +49,7 @@ def _unserialize(value):
         return _cast_to_unicode(value)
 
 
-class ArrayField(six.with_metaclass(models.SubfieldBase, models.Field)):
+class ArrayField(models.Field):
     empty_strings_allowed = False
 
     def __init__(self, dbtype="int", type_cast=None, dimension=1, *args, **kwargs):
@@ -387,16 +387,25 @@ if django.VERSION[:2] >= (1, 7):
     ArrayField.register_lookup(AnyContainsLookup)
     ArrayField.register_lookup(AnyIContainsLookup)
 
+    if django.VERSION < (1, 9):
+        class IndexTransform(Transform):
+            def __init__(self, index, field, *args, **kwargs):
+                super(IndexTransform, self).__init__(*args, **kwargs)
+                self.index = index
+                self.field = field
 
-    class IndexTransform(Transform):
-        def __init__(self, index, field, *args, **kwargs):
-            super(IndexTransform, self).__init__(*args, **kwargs)
-            self.index = index
-            self.field = field
+            def as_sql(self, qn, connection):
+                lhs, params = qn.compile(self.lhs)
+                return "%s[%s]" % (lhs, self.index), params
+    else:
+        class IndexTransform(Transform):
+            def __init__(self, index, field, *args, **kwargs):
+                super(IndexTransform, self).__init__(*args, output_field=field, **kwargs)
+                self.index = index
 
-        def as_sql(self, qn, connection):
-            lhs, params = qn.compile(self.lhs)
-            return "%s[%s]" % (lhs, self.index), params
+            def as_sql(self, qn, connection):
+                lhs, params = qn.compile(self.lhs)
+                return "%s[%s]" % (lhs, self.index), params
 
             # TODO: Temporary not supported nested index lookup
             # @property
