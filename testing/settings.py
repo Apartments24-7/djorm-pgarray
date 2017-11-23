@@ -48,5 +48,3 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "testing.pg_array_fields",
 ]
-
-TEST_RUNNER = "django.test.runner.DiscoverRunner"
